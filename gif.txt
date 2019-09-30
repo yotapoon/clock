@@ -1,0 +1,17 @@
+reset
+set nokey
+load "setting.txt"
+set xrange[Xmin:Xmax]
+set yrange[Ymin:Ymax]
+set size square
+set xlabel "x"
+set ylabel "y"
+set term gif animate
+set output file.".gif"
+
+set arrow 1 from 0,0 to 0,h nohead lw 1.0
+
+n0=0
+dn=1
+
+load "plot.txt"
