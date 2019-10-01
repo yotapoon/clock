@@ -5,25 +5,25 @@
 #include <time.h>
 #include <complex.h>
 
-#define N 200//粒子数
+#define N 600//粒子数
 #define n ((int)ceil(log2(N)))//完全平衡木の深さ
 #define q ((int)pow(2,n)-N)
 #define p ((N-q)/2)
-double a_large = 0.04,a_small = 0.01;//radius of disk
+double a_large = 0.08,a_small = 0.01;//radius of disk
 double m_large = 1.0,m_small = 1.0;
-double h = 0.40;
-double rate_large = 0.3;
+double h = 3.0;
+double rate_large = 0.2;
 //double a = 0.01;//粒子の半径
 double e = 0.95,e_wall = 1.0;//それぞれ粒子同士、壁との反発係数
 double g = 1.0;//規格化された重力加速度
-double Xmin = -1.0,Xmax = 1.0,X0 = 0.0;//左右の壁の位置
-double Ymin = 0.0,Ymax = 2.0;//底面とセルの最高点の位置
-double U = 0.3;//床面の振動する速度
+double Xmin = -3.0,Xmax = 3.0,X0 = 0.0;//左右の壁の位置
+double Ymin = 0.0,Ymax = 6.0;//底面とセルの最高点の位置
+double U = 0.54;//床面の振動する速度
 double V0 = 0.5;//初期条件での速度分布の標準偏差
 int N_cell_x = 16,N_cell_y = 12;//x,y方向のセルの分割数
-double T = 600.0;//シミュレーション終了時刻
+double T = 2000.0;//シミュレーション終了時刻
 double epsilon = 0.000001;//数値誤差の影響を除くために入れている
-int step_gif = 1000;//gifアニメーションのステップ数
+int step_gif = 400;//gifアニメーションのステップ数
 
 struct NODE{//完全平衡木のノードの構造体
 	int number;//対応する粒子番号
@@ -110,7 +110,7 @@ int main(void){
 	//gif生成に必要な情報を出力
 	fprintf(fp_setting,"Xmin = %lf\nXmax = %lf\nYmin = %lf\nYmax = %lf\nh = %lf\n",Xmin,Xmax,Ymin,Ymax,h);
 	fprintf(fp_setting,"n1 = %d\ndt = %lf\n",step_gif,dtrec);
-	fprintf(fp_setting,"file = \"position(N=%d)\"\n",N);
+	fprintf(fp_setting,"file = \"position(U=%lf)\"\n",U);
 	
 	srand((unsigned) time(NULL));
 	struct PARTICLE particle[N];//粒子を表す構造体
@@ -122,11 +122,11 @@ int main(void){
 	
 	for(int i=0;i<N;i++){
 		if(strcmp(particle[i].size,"small") == 0){
-			printf("small\n");
+			//printf("small\n");
 			N_small += 1;
 		}else{
 			N_large += 1;
-			printf("large\n");
+			//printf("large\n");
 		}
 	}
 	
@@ -205,7 +205,7 @@ int main(void){
 	fclose(fp_bias);
 	fclose(fp_setting);
 	system("gnuplot gif.txt\n");
-	system("gnuplot bias.txt\n");
+	system("gnuplot bias_plt.txt\n");
 	return 0;
 }
 
@@ -311,21 +311,44 @@ void status_initialize(struct PARTICLE particle[N]){//粒子の初期条件を決める
 			particle[i].m = m_large;
 			particle[i].a = a_large;
 			strcpy(particle[i].size,"large");
+			prob = Uniform();
+			particle[i].x = (X0+particle[i].a)*prob+(Xmax-particle[i].a)*(1-prob);
+			prob = Uniform();
+			particle[i].y = (Ymin+particle[i].a)*prob+(Ymax-particle[i].a)*(1-prob);
+			while(set(particle,i) == 0){//もし重なっている粒子があったときは重なりがなくなるまで登録し直す
+				prob = Uniform();
+				particle[i].x = (X0+particle[i].a)*prob+(Xmax-particle[i].a)*(1-prob);
+				prob = Uniform();
+				particle[i].y = (Ymin+particle[i].a)*prob+(Ymax-particle[i].a)*(1-prob);
+			}
 		}else{
 			particle[i].m = m_small;
 			particle[i].a = a_small;
 			strcpy(particle[i].size,"small");
+			prob = Uniform();
+			particle[i].x = (Xmin+particle[i].a)*prob+(X0-particle[i].a)*(1-prob);
+			prob = Uniform();
+			particle[i].y = (Ymin+particle[i].a)*prob+(Ymax-particle[i].a)*(1-prob);
+			while(set(particle,i) == 0){//もし重なっている粒子があったときは重なりがなくなるまで登録し直す
+				prob = Uniform();
+				particle[i].x = (Xmin+particle[i].a)*prob+(X0-particle[i].a)*(1-prob);
+				prob = Uniform();
+				particle[i].y = (Ymin+particle[i].a)*prob+(Ymax-particle[i].a)*(1-prob);
+			}
 		}
+		/*
 		prob = Uniform();
 		particle[i].x = (Xmin+particle[i].a)*prob+(Xmax-particle[i].a)*(1-prob);
 		prob = Uniform();
 		particle[i].y = (Ymin+particle[i].a)*prob+(0.5*Ymax-particle[i].a)*(1-prob);
+		
 		while(set(particle,i) == 0){//もし重なっている粒子があったときは重なりがなくなるまで登録し直す
 			prob = Uniform();
 			particle[i].x = (Xmin+particle[i].a)*prob+(Xmax-particle[i].a)*(1-prob);
 			prob = Uniform();
 			particle[i].y = (Ymin+particle[i].a)*prob+(Ymax-particle[i].a)*(1-prob);
 		}
+		*/
 		particle[i].u = rand_normal(0.0,V0);
 		particle[i].v = rand_normal(0.0,V0);
 		particle[i].next = -1;
@@ -441,7 +464,7 @@ void G1(struct PARTICLE *particle,int j){//粒子と壁の衝突処理を行う
 		particle->y = Ymin+particle->a+epsilon;
 	}else if(j == -4){//collision with Center Wall
 		particle->x = (particle->x/fabs(particle->x))*particle->a;
-		if(particle->y > h){
+		if(particle->y < h){
 		//if(fabs(particle->y-h) > ell){//really collision
 			particle->u = -e_wall*particle->u;
 		}
