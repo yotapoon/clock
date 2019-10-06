@@ -222,7 +222,7 @@ struct EVENT Predictions(struct PARTICLE particle[N],struct CELL cell[N_cell_x][
 	
 	for(j=-5;j<0;j++){//•Ç‚Æ‚ÌÕ“ËŽžŠÔ‚ðŠm”F
 		t_temp = T_DWC(particle[i],particle[i].tau,j);
-		if((t_temp > t) & ( t_temp < t_min)){
+		if((t_temp > t) && ( t_temp < t_min)){
 			t_min = t_temp;
 			j_col = j;
 		}
